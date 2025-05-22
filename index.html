@@ -2,90 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Supertab Starter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Supertab Demo</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      background: #f9fafb;
-    }
-    .button {
-      margin-top: 16px;
-      padding: 14px 28px;
-      font-size: 16px;
-      font-weight: 600;
-      color: white;
-      background: linear-gradient(135deg, #4f46e5, #3b82f6);
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 16px;
-      font-size: 14px;
-    }
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    #result { margin-top: 20px; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h1>Supertab Starter App</h1>
-  <button class="button" onclick="authenticate()">Login with Supertab</button>
-  <button class="button" onclick="checkEntitlement()">Check Entitlement for post.42</button>
-  <button class="button" onclick="purchaseOffering()">Purchase One-Time Offering</button>
-  <div id="status"></div>
+  <h1>🧪 Supertab Demo</h1>
+  <button onclick="authenticate()">Login with Supertab</button>
+  <button onclick="purchaseOffering()">Purchase One-Time Offering</button>
+  <button onclick="checkEntitlement()">Check Entitlement for post.42</button>
+  <div id="result"></div>
 
   <script>
-    const clientId = 'test_client.2675dd10-5931-45de-9f00-2e723c46c7ea'; // use your value
-    const redirectUri = window.location.origin;
     const authBase = 'https://auth.supertab.co/oauth2/auth';
-    const tokenEndpoint = 'https://auth.supertab.co/oauth2/token';
+    const tokenUrl = 'https://auth.supertab.co/oauth2/token';
     const apiBase = 'https://tapi.supertab.co/capi';
-
-    const contentKey = 'post.42';
-    const offeringId = 'onetime_offering.1204ca6d-6f68-4b91-9be1-6cc825bace1c';
-    const version = '2025-04-01';
-
-    let accessToken = null;
+    const clientId = 'test_client.2675dd10-5931-45de-9f00-2e723c46c7ea'; // 🔁 Replace with your Supertab client ID
+    const redirectUri = window.location.origin;
+    const resultEl = document.getElementById('result');
 
     async function authenticate() {
-  const encoder = new TextEncoder();
-  const codeVerifier = [...crypto.getRandomValues(new Uint8Array(32))]
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-  const state = [...crypto.getRandomValues(new Uint8Array(16))]
-    .map(b => b.toString(16).padStart(2, '0')).join('');
+      const encoder = new TextEncoder();
+      const codeVerifier = [...crypto.getRandomValues(new Uint8Array(32))]
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      const state = [...crypto.getRandomValues(new Uint8Array(16))]
+        .map(b => b.toString(16).padStart(2, '0')).join('');
 
-  const encoded = encoder.encode(codeVerifier);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const codeChallenge = btoa(String.fromCharCode.apply(null, hashArray))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const encoded = encoder.encode(codeVerifier);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const codeChallenge = btoa(String.fromCharCode.apply(null, hashArray))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-  localStorage.setItem('code_verifier', codeVerifier);
-  localStorage.setItem('oauth_state', state);
+      localStorage.setItem('code_verifier', codeVerifier);
+      localStorage.setItem('oauth_state', state);
 
-  const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`;
+      const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`;
 
-  window.location.href = authUrl;
-}
+      window.location.href = authUrl;
+    }
 
     async function handleRedirect() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
-      if (!code) return;
-      const codeVerifier = localStorage.getItem('code_verifier');
+      const state = params.get('state');
+      const storedState = localStorage.getItem('oauth_state');
+      if (!code || state !== storedState) return;
 
-      const res = await fetch(tokenEndpoint, {
+      const codeVerifier = localStorage.getItem('code_verifier');
+      const res = await fetch(tokenUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: clientId,
           grant_type: 'authorization_code',
+          client_id: clientId,
           code,
           redirect_uri: redirectUri,
           code_verifier: codeVerifier
@@ -93,77 +67,28 @@
       });
 
       const data = await res.json();
-      accessToken = data.access_token;
-      localStorage.setItem('access_token', accessToken);
-      document.getElementById('status').textContent = '✅ Logged in with Supertab';
-      window.history.replaceState({}, document.title, "/");
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        resultEl.textContent = '✅ Logged in with Supertab';
+      } else {
+        resultEl.textContent = '❌ Login failed';
+        console.error(data);
+      }
     }
 
-    async function checkEntitlement() {
+    async function purchaseOffering() {
       const token = localStorage.getItem('access_token');
       if (!token) return alert('Please login first.');
 
-      const res = await fetch(`${apiBase}/entitlements/${contentKey}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-api-version': version,
-          'x-supertab-client-id': clientId
-        }
-      });
-      const data = await res.json();
-      document.getElementById('status').textContent = data.has_entitlement
-        ? '✅ User is entitled to this content'
-        : '❌ User is NOT entitled';
-    }
-
-async function purchaseOffering() {
-  const token = localStorage.getItem('access_token');
-  if (!token) return alert('Please login first.');
-
-  const offeringId = 'onetime_offering.1e9a1b17-bef6-4dbc-904e-27c29d0844dd'; // replace if needed
-
-  const res = await fetch(`${apiBase}/purchases/onetime_offerings`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'x-supertab-client-id': clientId,
-      'x-api-version': '2025-04-01'
-    },
-    body: JSON.stringify({
-      onetime_offering_id: offeringId
-    })
-  });
-
-  const data = await res.json();
-
-  console.log('🔍 Purchase response from Supertab:', data);
-
-  if (data.purchases && data.purchases.length > 0) {
-    const purchase = data.purchases[0];
-
-    if (purchase.entitlement_status?.has_entitlement) {
-      resultEl.textContent = '✅ User is entitled (via purchase response)';
-    } else {
-      resultEl.textContent = '⚠️ Purchase succeeded, but no entitlement reported (yet)';
-    }
-
-  } else if (data.action_required && data.action_required_details) {
-    resultEl.textContent = 'ℹ️ Further payment required, redirecting...';
-    window.location.href = data.action_required_details.url;
-
-  } else {
-    resultEl.textContent = '❌ No purchase created or entitlement granted';
-  }
-}
+      const offeringId = 'onetime_offering.1e9a1b17-bef6-4dbc-904e-27c29d0844dd'; // 🔁 Replace with your real offering ID
 
       const res = await fetch(`${apiBase}/purchases/onetime_offerings`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'x-api-version': version,
+          'Content-Type': 'application/json',
           'x-supertab-client-id': clientId,
-          'Content-Type': 'application/json'
+          'x-api-version': '2025-04-01'
         },
         body: JSON.stringify({
           onetime_offering_id: offeringId
@@ -171,14 +96,48 @@ async function purchaseOffering() {
       });
 
       const data = await res.json();
-      if (data.action_required && data.action_required_details?.checkout_url) {
-        window.location.href = data.action_required_details.checkout_url;
+      console.log('🔍 Purchase response from Supertab:', data);
+
+      if (data.purchases && data.purchases.length > 0) {
+        const purchase = data.purchases[0];
+
+        if (purchase.entitlement_status?.has_entitlement) {
+          resultEl.textContent = '✅ User is entitled (via purchase response)';
+        } else {
+          resultEl.textContent = '⚠️ Purchase succeeded, but no entitlement reported (yet)';
+        }
+
+      } else if (data.action_required && data.action_required_details) {
+        resultEl.textContent = 'ℹ️ Further payment required, redirecting...';
+        window.location.href = data.action_required_details.url;
       } else {
-        document.getElementById('status').textContent = '✅ Purchase complete or not needed';
+        resultEl.textContent = '❌ No purchase created or entitlement granted';
       }
     }
 
-    handleRedirect();
+    async function checkEntitlement() {
+      const token = localStorage.getItem('access_token');
+      if (!token) return alert('Please login first.');
+
+      const res = await fetch(`${apiBase}/entitlements/post.42`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-supertab-client-id': clientId,
+          'x-api-version': '2025-04-01'
+        }
+      });
+
+      const data = await res.json();
+      console.log('🔍 Entitlement check:', data);
+
+      if (data.has_entitlement) {
+        resultEl.textContent = '✅ User is entitled to post.42';
+      } else {
+        resultEl.textContent = '❌ User is NOT entitled';
+      }
+    }
+
+    window.onload = handleRedirect;
   </script>
 </body>
 </html>
