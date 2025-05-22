@@ -38,16 +38,17 @@ export default async function handler(req, res) {
 body: JSON.stringify({
   currency_code: 'USD', // <-- top-level field required
   items: [
-    {
-      name: 'Post 42 Access',
-      description: 'Unlock premium content for post.42',
-      price_amount: 1.00,
-      currency_code: 'USD'
+  {
+    name: 'Post 42 Access',
+    description: 'Unlock premium content for post.42',
+    price_amount: 1.00,
+    currency_code: 'USD',
+    metadata: {
+      content_key: 'post.42'
     }
-  ],
-  metadata: {
-    content_key: 'post.42'
   }
+]
+// optional: can remove or leave the root metadata
 })
   });
 
