@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supertab Starter</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      background: #f9fafb;
+    }
+    .button {
+      margin-top: 16px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      background: linear-gradient(135deg, #4f46e5, #3b82f6);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 16px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Supertab Starter App</h1>
+  <button class="button" onclick="authenticate()">Login with Supertab</button>
+  <button class="button" onclick="checkEntitlement()">Check Entitlement for post.42</button>
+  <button class="button" onclick="purchaseOffering()">Purchase One-Time Offering</button>
+  <div id="status"></div>
+
+  <script>
+    const clientId = 'YOUR_CLIENT_ID';
+    const redirectUri = window.location.origin + '/callback';
+    const authBase = 'https://auth.supertab.co/oauth2/auth';
+    const tokenEndpoint = 'https://auth.supertab.co/oauth2/token';
+    const apiBase = 'https://tapi.supertab.co/capi';
+
+    const contentKey = 'post.42';
+    const offeringId = 'onetime_offering.demo123';
+    const version = '2025-04-01';
+
+    let accessToken = null;
+
+    async function authenticate() {
+      const codeVerifier = btoa(crypto.getRandomValues(new Uint8Array(32)).join(''));
+      const codeChallenge = btoa(codeVerifier).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+      localStorage.setItem('code_verifier', codeVerifier);
+      const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=plain`;
+      window.location.href = authUrl;
+    }
+
+    async function handleRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (!code) return;
+      const codeVerifier = localStorage.getItem('code_verifier');
+
+      const res = await fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+          code_verifier: codeVerifier
+        })
+      });
+
+      const data = await res.json();
+      accessToken = data.access_token;
+      localStorage.setItem('access_token', accessToken);
+      document.getElementById('status').textContent = '✅ Logged in with Supertab';
+      window.history.replaceState({}, document.title, "/");
+    }
+
+    async function checkEntitlement() {
+      const token = localStorage.getItem('access_token');
+      if (!token) return alert('Please login first.');
+
+      const res = await fetch(`${apiBase}/entitlements/${contentKey}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-api-version': version,
+          'x-supertab-client-id': clientId
+        }
+      });
+      const data = await res.json();
+      document.getElementById('status').textContent = data.has_entitlement
+        ? '✅ User is entitled to this content'
+        : '❌ User is NOT entitled';
+    }
+
+    async function purchaseOffering() {
+      const token = localStorage.getItem('access_token');
+      if (!token) return alert('Please login first.');
+
+      const res = await fetch(`${apiBase}/purchases/onetime_offerings`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-api-version': version,
+          'x-supertab-client-id': clientId,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          onetime_offering_id: offeringId
+        })
+      });
+
+      const data = await res.json();
+      if (data.action_required && data.action_required_details?.checkout_url) {
+        window.location.href = data.action_required_details.checkout_url;
+      } else {
+        document.getElementById('status').textContent = '✅ Purchase complete or not needed';
+      }
+    }
+
+    handleRedirect();
+  </script>
+</body>
+</html>
