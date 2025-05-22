@@ -116,9 +116,46 @@
         : '❌ User is NOT entitled';
     }
 
-    async function purchaseOffering() {
-      const token = localStorage.getItem('access_token');
-      if (!token) return alert('Please login first.');
+async function purchaseOffering() {
+  const token = localStorage.getItem('access_token');
+  if (!token) return alert('Please login first.');
+
+  const offeringId = 'onetime_offering.1e9a1b17-bef6-4dbc-904e-27c29d0844dd'; // replace if needed
+
+  const res = await fetch(`${apiBase}/purchases/onetime_offerings`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'x-supertab-client-id': clientId,
+      'x-api-version': '2025-04-01'
+    },
+    body: JSON.stringify({
+      onetime_offering_id: offeringId
+    })
+  });
+
+  const data = await res.json();
+
+  console.log('🔍 Purchase response from Supertab:', data);
+
+  if (data.purchases && data.purchases.length > 0) {
+    const purchase = data.purchases[0];
+
+    if (purchase.entitlement_status?.has_entitlement) {
+      resultEl.textContent = '✅ User is entitled (via purchase response)';
+    } else {
+      resultEl.textContent = '⚠️ Purchase succeeded, but no entitlement reported (yet)';
+    }
+
+  } else if (data.action_required && data.action_required_details) {
+    resultEl.textContent = 'ℹ️ Further payment required, redirecting...';
+    window.location.href = data.action_required_details.url;
+
+  } else {
+    resultEl.textContent = '❌ No purchase created or entitlement granted';
+  }
+}
 
       const res = await fetch(`${apiBase}/purchases/onetime_offerings`, {
         method: 'POST',
