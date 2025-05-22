@@ -35,19 +35,20 @@ export default async function handler(req, res) {
       'x-supertab-client-id': SUPERTAB_CLIENT_ID,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      items: [
-        {
-          name: 'Post 42 Access',
-          description: 'Unlock premium content for post.42',
-          price_amount: 1.00,
-          currency_code: 'USD'
-        }
-      ],
-      metadata: {
-        content_key: 'post.42'
-      }
-    })
+body: JSON.stringify({
+  currency_code: 'USD', // <-- top-level field required
+  items: [
+    {
+      name: 'Post 42 Access',
+      description: 'Unlock premium content for post.42',
+      price_amount: 1.00,
+      currency_code: 'USD'
+    }
+  ],
+  metadata: {
+    content_key: 'post.42'
+  }
+})
   });
 
   const offeringData = await offeringRes.json();
