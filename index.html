@@ -54,17 +54,22 @@
     let accessToken = null;
 
     async function authenticate() {
+  const encoder = new TextEncoder();
   const codeVerifier = [...crypto.getRandomValues(new Uint8Array(32))]
     .map(b => b.toString(16).padStart(2, '0')).join('');
-  const codeChallenge = codeVerifier; // plain PKCE
-
   const state = [...crypto.getRandomValues(new Uint8Array(16))]
     .map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const encoded = encoder.encode(codeVerifier);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const codeChallenge = btoa(String.fromCharCode.apply(null, hashArray))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
   localStorage.setItem('code_verifier', codeVerifier);
   localStorage.setItem('oauth_state', state);
 
-  const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=plain&state=${state}`;
+  const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`;
 
   window.location.href = authUrl;
 }
