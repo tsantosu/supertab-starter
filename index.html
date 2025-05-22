@@ -54,12 +54,17 @@
     let accessToken = null;
 
     async function authenticate() {
-      const codeVerifier = btoa(crypto.getRandomValues(new Uint8Array(32)).join(''));
-      const codeChallenge = btoa(codeVerifier).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-      localStorage.setItem('code_verifier', codeVerifier);
-      const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=plain`;
-      window.location.href = authUrl;
-    }
+  const codeVerifier = btoa(crypto.getRandomValues(new Uint8Array(32)).join(''));
+  const codeChallenge = codeVerifier; // plain method
+
+  const state = btoa(crypto.getRandomValues(new Uint8Array(16)).join('')).slice(0, 16);
+  localStorage.setItem('code_verifier', codeVerifier);
+  localStorage.setItem('oauth_state', state);
+
+  const authUrl = `${authBase}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=capi:read%20capi:write&code_challenge=${codeChallenge}&code_challenge_method=plain&state=${state}`;
+
+  window.location.href = authUrl;
+}
 
     async function handleRedirect() {
       const params = new URLSearchParams(window.location.search);
