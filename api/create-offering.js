@@ -31,17 +31,18 @@ export default async function handler(req, res) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      currency_code: 'USD',
-      items: [
-        {
-          name: 'Post 42 Access',
-          description: 'Unlock premium content post.42',
-          price: {
-            amount: 1.00,
-            currency_code: 'USD'
-          }
-        }
-      ],
+  items: [
+    {
+      name: 'Post 42 Access',
+      description: 'Unlock premium content post.42',
+      price_amount: 1.00,
+      currency_code: 'USD'
+    }
+  ],
+  metadata: {
+    content_key: 'post.42'
+  }
+}),
       metadata: {
         content_key: 'post.42'
       }
